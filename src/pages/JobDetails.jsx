@@ -1,13 +1,15 @@
 import axios from "axios";
-import { format } from "date-fns";
+import { compareAsc, format } from "date-fns";
 import { useContext, useEffect, useState } from "react";
 
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AuthContext } from "../providers/AuthProvider";
+import toast from "react-hot-toast";
 
 const JobDetails = () => {
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
   const [startDate, setStartDate] = useState(new Date());
   const { id } = useParams();
@@ -23,6 +25,7 @@ const JobDetails = () => {
     setJob(data);
   };
   const {
+    _id,
     title,
     buyer,
     deadline,
@@ -32,6 +35,47 @@ const JobDetails = () => {
     description,
     bid_count,
   } = job || {};
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const price = form.price.value;
+    const email = user?.email;
+    const comment = form.comment.value;
+    const offeredDate = startDate;
+    const jobId = _id;
+
+    // 1. check if the user and job buyer are the same
+    if (user?.email === buyer?.email) {
+      return toast.error("You can't bid on your own job");
+    }
+
+    // 2. check if the deadline has passed
+    if (compareAsc(new Date(), new Date(deadline)) === 1) {
+      return toast.error("Job expired");
+    }
+
+    // 3. check the offered deadline is crossed the job deadline
+    if (compareAsc(new Date(startDate), new Date(deadline)) === 1) {
+      return toast.error("Deadline has passed the offered date");
+    }
+
+    // 4. check if the price is greater than the max price
+    if (parseFloat(price) > parseFloat(max_price)) {
+      return toast.error("Price is greater than max price");
+    }
+
+    const bidData = { price, email, comment, offeredDate, jobId };
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/add-bid`, bidData);
+      form.reset();
+      toast.success("bid Successfull!");
+      // navigate("/my-bids");
+    } catch (err) {
+      toast.error(err.response.data.message);
+      console.log(err);
+    }
+  };
 
   return (
     <div className="flex flex-col md:flex-row justify-around gap-5  items-center min-h-[calc(100vh-306px)] md:max-w-screen-xl mx-auto ">
@@ -75,13 +119,14 @@ const JobDetails = () => {
           </p>
         </div>
       </div>
+
       {/* Place A Bid Form */}
       <section className="p-6 w-full  bg-white rounded-md shadow-md flex-1 md:min-h-[350px]">
         <h2 className="text-lg font-semibold text-gray-700 capitalize ">
           Place A Bid
         </h2>
 
-        <form>
+        <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-6 mt-4 sm:grid-cols-2">
             <div>
               <label className="text-gray-700 " htmlFor="price">
