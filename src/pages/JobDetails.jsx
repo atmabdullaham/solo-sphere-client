@@ -65,12 +65,21 @@ const JobDetails = () => {
       return toast.error("Price is greater than max price");
     }
 
-    const bidData = { price, email, comment, offeredDate, jobId };
+    const bidData = {
+      price,
+      email,
+      comment,
+      offeredDate,
+      jobId,
+      title,
+      category,
+      status: "pending",
+    };
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/add-bid`, bidData);
       form.reset();
       toast.success("bid Successfull!");
-      // navigate("/my-bids");
+      navigate("/my-bids");
     } catch (err) {
       toast.error(err.response.data.message);
       console.log(err);
